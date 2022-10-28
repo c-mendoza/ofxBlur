@@ -17,7 +17,7 @@ void GaussianRow(int elements, vector<float>& row, float variance = .2) {
 string generatePassThruVert(){
     stringstream src;
     
-    src <<"#version 150\n";
+    src <<"#version 430\n";
     src <<"uniform mat4 modelViewProjectionMatrix;\n";
     src <<"in vec4 position;\n";
     src <<"in vec2 texcoord;\n";
@@ -30,7 +30,7 @@ string generatePassThruVert(){
     return src.str();
 }
 
-string generateBlurSource(int radius, float shape) {
+string generateBlurSource(int radius, float shape, float val) {
 	int rowSize = 2 * radius + 1;
 
 	// generate row
@@ -64,12 +64,17 @@ string generateBlurSource(int radius, float shape) {
 		float weightedAverage = (left * leftVal + right * rightVal) / weightSum;
 		offsets.push_back(weightedAverage);
     }
-    
+
+    for (int i = 0; i < offsets.size(); i++)
+    {
+        offsets[i] = offsets[i] / val;
+    }
+
     stringstream src;
     
     if ( ofIsGLProgrammableRenderer() ){
-        src << "#version 150\n";
-        src << "uniform sampler2DRect source;\n";
+        src << "#version 430\n";
+        src << "uniform sampler2D source;\n";
         src << "uniform vec2 direction;\n";
         src << "in vec2 vTexCoord;\n";
         
@@ -112,8 +117,8 @@ string generateCombineSource(int passes, float downsample) {
 	}
 	stringstream src;
     if ( ofIsGLProgrammableRenderer() ){
-        src << "#version 150\n";
-        src << "uniform sampler2DRect " << ofJoinString(combineNames, ",") << ";\n";
+        src << "#version 430\n";
+        src << "uniform sampler2D " << ofJoinString(combineNames, ",") << ";\n";
         src << "uniform float brightness;\n";
         if(downsample == 1) {
             src << "const float scaleFactor = 1.;\n";
@@ -164,7 +169,7 @@ ofxBlur::ofxBlur()
 }
 
 void ofxBlur::setup(int width, int height, int radius, float shape, int passes, float downsample) {
-	string blurSource = generateBlurSource(radius, shape);
+	string blurSource = generateBlurSource(radius, shape, max(width, height));
 	if(ofGetLogLevel() == OF_LOG_VERBOSE) {
 		cout << "ofxBlur is loading blur shader:" << endl << blurSource << endl;
 	}
@@ -258,9 +263,9 @@ void ofxBlur::end() {
 		int w = curPing.getWidth();
 		int h = curPing.getHeight();
 		if(i > 0) {
-			ping[i - 1].draw(0, 0, w, h);
+            ping[i - 1].draw(0, 0);// , w, h);
 		} else {
-			base.draw(0, 0, w, h);
+            base.draw(0, 0);// , w, h);
 		}
 		curPing.end();
 
